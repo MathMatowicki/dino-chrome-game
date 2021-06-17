@@ -14,6 +14,10 @@ class PlayScene extends Phaser.Scene {
 
     const { height, width } = this.game.config;
 
+    this.jumpSound = this.sound.add('jump', { volume: 0.2 })
+    this.reachSound = this.sound.add('reach', { volume: 0.2 })
+    this.hitSound = this.sound.add('hit', { volume: 0.2 })
+
     this.startTrigger = this.physics.add.sprite(0, 10).setOrigin(0, 1).setImmovable();
 
     this.ground = this.add.tileSprite(0, height, 100, 26, 'ground').setOrigin(0, 1);
@@ -33,7 +37,16 @@ class PlayScene extends Phaser.Scene {
     this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setAlpha(0);
     this.gameOverText = this.add.image(0, 0, 'game-over');
     this.restart = this.add.image(0, 80, 'restart').setInteractive();
+
     this.gameOverScreen.add([this.gameOverText, this.restart])
+
+    this.environment = this.add.group();
+    this.environment.addMultiple([
+      this.add.image(width - 66, 80, 'cloud'),
+      this.add.image(width / 2, 170, 'cloud'),
+      this.add.image(width / 1.4, 120, 'cloud'),
+    ]);
+    this.environment.setAlpha(0);
 
     this.obsticles = this.physics.add.group();
 
@@ -62,6 +75,7 @@ class PlayScene extends Phaser.Scene {
       this.gameSpeed = 10;
       this.gameOverScreen.setAlpha(1);
       this.score = 0;
+      this.hitSound.play();
     }, null, this)
   }
 
@@ -91,6 +105,7 @@ class PlayScene extends Phaser.Scene {
             this.isGameRunning = true;
             this.dino.setVelocity(0);
             this.scoreText.setAlpha(1);
+            this.environment.setAlpha(1);
             startEvent.remove();
           }
         }
@@ -129,6 +144,18 @@ class PlayScene extends Phaser.Scene {
         if (!this.isGameRunning) { return; }
         this.score++;
         this.gameSpeed += 0.02;
+        //Reaching 100 and 200 and so on ...
+        if (this.score % 100 == 0) {
+          this.reachSound.play();
+
+          this.tweens.add({
+            targets: this.scoreText,
+            duration: 100,
+            repeat: 3,
+            alpha: 0,
+            yoyo: true
+          });
+        }
         const score = Array.from(String(this.score), Number);
         for (let i = 0; i < 5 - String(this.score).length; i++) {
           score.unshift(0);
@@ -153,9 +180,10 @@ class PlayScene extends Phaser.Scene {
 
     this.input.keyboard.on('keydown_SPACE', () => {
       if (!this.dino.body.onFloor() || this.dino.body.velocity.x > 0) { return; } //Prevent from dino ability to fly 
-      this.dino.setVelocityY(-1600);
       this.dino.body.height = 92;
       this.dino.body.offset.y = 0;
+      this.jumpSound.play();
+      this.dino.setVelocityY(-1600);
     })
     //if pressed down arrow reduce size of dino
     this.input.keyboard.on('keydown_DOWN', () => {
@@ -193,11 +221,12 @@ class PlayScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this.isGameRunning) { return }
+
     //fake ground moving
     this.ground.tilePositionX += this.gameSpeed;
     //obsticles moving towards dino
     Phaser.Actions.IncX(this.obsticles.getChildren(), - this.gameSpeed);
-
+    Phaser.Actions.IncX(this.environment.getChildren(), - 2.3);
     //60*10*0.08
     this.respawnTime += delta * this.gameSpeed * 0.08;
 
@@ -209,6 +238,12 @@ class PlayScene extends Phaser.Scene {
     this.obsticles.getChildren().forEach(obsticle => {
       if (obsticle.getBounds().right < 0) {
         obsticle.destroy();
+      }
+    })
+    //Render new clouds
+    this.environment.getChildren().forEach(env => {
+      if (env.getBounds().right < 0) {
+        env.x = this.game.config.width + 30;
       }
     })
     if (this.dino.body.deltaAbsY() > 0) {//Dino jumping?
