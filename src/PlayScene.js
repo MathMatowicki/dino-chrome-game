@@ -20,14 +20,19 @@ class PlayScene extends Phaser.Scene {
     this.dino = this.physics.add.sprite(0, height, 'dino-idle').setOrigin(0, 1)
       .setCollideWorldBounds(true)
       .setGravityY(4000);
-    //End screen
+
     this.scoreText = this.add
       .text(width, 0, "00000", { fill: '#535353', font: '900 35px Courier', resolution: 5 })
       .setOrigin(1, 0)
+      .setAlpha(0);
+    this.highScoreText = this.add
+      .text(width, 0, "00000", { fill: '#535353', font: '900 35px Courier', resolution: 5 })
+      .setOrigin(1, 0)
+      .setAlpha(0);
+    //End screen
     this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setAlpha(0);
     this.gameOverText = this.add.image(0, 0, 'game-over');
     this.restart = this.add.image(0, 80, 'restart').setInteractive();
-
     this.gameOverScreen.add([this.gameOverText, this.restart])
 
     this.obsticles = this.physics.add.group();
@@ -40,6 +45,15 @@ class PlayScene extends Phaser.Scene {
   }
   initColliders() {
     this.physics.add.collider(this.dino, this.obsticles, () => {
+
+      this.highScoreText.x = this.scoreText.x - this.scoreText.width - 20;
+
+      const highScore = this.highScoreText.text.substr(this.highScoreText.text.length - 5);
+      const newScore = Number(this.scoreText.text) > Number(highScore) ? this.scoreText.text : highScore;
+
+      this.highScoreText.setText("HIGHEST SCORE " + newScore);
+      this.highScoreText.setAlpha(1);
+
       this.physics.pause();
       this.isGameRunning = false;
       this.anims.pauseAll();
@@ -47,10 +61,13 @@ class PlayScene extends Phaser.Scene {
       this.respawnTime = 0;
       this.gameSpeed = 10;
       this.gameOverScreen.setAlpha(1);
+      this.score = 0;
     }, null, this)
   }
+
   initStartTrigger() {
     const { width, height } = this.game.config;
+
     this.physics.add.overlap(this.startTrigger, this.dino, () => {
       if (this.startTrigger.y === 10) {
         this.startTrigger.body.reset(0, height);
@@ -73,6 +90,7 @@ class PlayScene extends Phaser.Scene {
             this.ground.width = width;
             this.isGameRunning = true;
             this.dino.setVelocity(0);
+            this.scoreText.setAlpha(1);
             startEvent.remove();
           }
         }
@@ -134,13 +152,14 @@ class PlayScene extends Phaser.Scene {
     })
 
     this.input.keyboard.on('keydown_SPACE', () => {
-      if (!this.dino.body.onFloor()) { return; } //Prevent from dino ability to fly 
+      if (!this.dino.body.onFloor() || this.dino.body.velocity.x > 0) { return; } //Prevent from dino ability to fly 
       this.dino.setVelocityY(-1600);
       this.dino.body.height = 92;
       this.dino.body.offset.y = 0;
     })
     //if pressed down arrow reduce size of dino
     this.input.keyboard.on('keydown_DOWN', () => {
+      if (!this.dino.body.onFloor() || !this.isGameRunning) { return; }
       this.dino.body.height = 58;
       this.dino.body.offset.y = 34;
     })
