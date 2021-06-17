@@ -18,13 +18,31 @@ class PlayScene extends Phaser.Scene {
     this.dino = this.physics.add.sprite(0, height, 'dino-idle').setOrigin(0, 1)
       .setCollideWorldBounds(true)
       .setGravityY(4000);
+    //End screen
+    this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setAlpha(0);
+    this.gameOverText = this.add.image(0, 0, 'game-over');
+    this.restart = this.add.image(0, 80, 'restart').setInteractive();
+
+    this.gameOverScreen.add([this.gameOverText, this.restart])
 
     this.obsticles = this.physics.add.group();
 
     this.initAnims();
     this.initStartTrigger();
+    this.initColliders();
     this.handleInputs();
 
+  }
+  initColliders() {
+    this.physics.add.collider(this.dino, this.obsticles, () => {
+      this.physics.pause();
+      this.isGameRunning = false;
+      this.anims.pauseAll();
+      this.dino.setTexture('dino-hurt');
+      this.respawnTime = 0;
+      this.gameSpeed = 10;
+      this.gameOverScreen.setAlpha(1);
+    }, null, this)
   }
   initStartTrigger() {
     const { width, height } = this.game.config;
@@ -81,6 +99,17 @@ class PlayScene extends Phaser.Scene {
 
   handleInputs() {
 
+    this.restart.on('pointerdown', () => {
+      this.dino.setVelocityY(0);
+      this.dino.body.height = 92;
+      this.dino.body.offset.y = 0;
+      this.physics.resume();
+      this.obsticles.clear(true, true);
+      this.isGameRunning = true;
+      this.gameOverScreen.setAlpha(0);
+      this.anims.resumeAll();
+    })
+
     this.input.keyboard.on('keydown_SPACE', () => {
       if (!this.dino.body.onFloor()) { return; } //Prevent from dino ability to fly 
       this.dino.setVelocityY(-1600);
@@ -135,6 +164,12 @@ class PlayScene extends Phaser.Scene {
       this.placeObsticle();
       this.respawnTime = 0;
     }
+    //Delete obsticles that are off the map
+    this.obsticles.getChildren().forEach(obsticle => {
+      if (obsticle.getBounds().right < 0) {
+        obsticle.destroy();
+      }
+    })
     if (this.dino.body.deltaAbsY() > 0) {//Dino jumping?
       this.dino.anims.stop();
       this.dino.setTexture('dino');
