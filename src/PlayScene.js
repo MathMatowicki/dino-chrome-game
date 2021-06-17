@@ -10,6 +10,8 @@ class PlayScene extends Phaser.Scene {
     this.isGameRunning = false;
     this.gameSpeed = 10;
     this.respawnTime = 10;
+    this.score = 0;
+
     const { height, width } = this.game.config;
 
     this.startTrigger = this.physics.add.sprite(0, 10).setOrigin(0, 1).setImmovable();
@@ -19,6 +21,9 @@ class PlayScene extends Phaser.Scene {
       .setCollideWorldBounds(true)
       .setGravityY(4000);
     //End screen
+    this.scoreText = this.add
+      .text(width, 0, "00000", { fill: '#535353', font: '900 35px Courier', resolution: 5 })
+      .setOrigin(1, 0)
     this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setAlpha(0);
     this.gameOverText = this.add.image(0, 0, 'game-over');
     this.restart = this.add.image(0, 80, 'restart').setInteractive();
@@ -31,7 +36,7 @@ class PlayScene extends Phaser.Scene {
     this.initStartTrigger();
     this.initColliders();
     this.handleInputs();
-
+    this.handelScore();
   }
   initColliders() {
     this.physics.add.collider(this.dino, this.obsticles, () => {
@@ -97,9 +102,26 @@ class PlayScene extends Phaser.Scene {
     })
   }
 
-  handleInputs() {
+  handelScore() {
+    this.time.addEvent({
+      delay: 1000 / 10,
+      loop: true,
+      callbackScope: this,
+      callback: () => {
+        if (!this.isGameRunning) { return; }
+        this.score++;
+        this.gameSpeed += 0.02;
+        const score = Array.from(String(this.score), Number);
+        for (let i = 0; i < 5 - String(this.score).length; i++) {
+          score.unshift(0);
+        }
+        this.scoreText.setText(score.join(''));
+      }
+    });
+  }
 
-    this.restart.on('pointerdown', () => {
+  handleInputs() {
+    this.restart.on('pointerdown', () => {//handle click on restart reset the game to default value
       this.dino.setVelocityY(0);
       this.dino.body.height = 92;
       this.dino.body.offset.y = 0;
@@ -108,6 +130,7 @@ class PlayScene extends Phaser.Scene {
       this.isGameRunning = true;
       this.gameOverScreen.setAlpha(0);
       this.anims.resumeAll();
+      this.score = 0;
     })
 
     this.input.keyboard.on('keydown_SPACE', () => {
@@ -126,7 +149,6 @@ class PlayScene extends Phaser.Scene {
       this.dino.body.height = 92;
       this.dino.body.offset.y = 0;
     })
-
   }
 
   placeObsticle() {
